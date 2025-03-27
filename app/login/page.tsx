@@ -4,42 +4,71 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, ShoppingBag } from "lucide-react"
 
+import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const { signIn } = useAuth()
+  const router = useRouter()
+  const { toast } = useToast()
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await signIn(email, password)
+      toast({
+        title: "Login successful",
+        description: "You have been logged in successfully.",
+      })
+      router.push("/dashboard")
+    } catch (error) {
+      console.error("Login error:", error)
+      toast({
+        title: "Login failed",
+        description: "Please check your credentials and try again.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-      // Redirect to dashboard would happen here
-      window.location.href = "/dashboard"
-    }, 1500)
+    }
   }
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    // Phone authentication would require additional steps with Firebase
+    // This is a simplified version
+    try {
+      // Phone auth logic would go here
+      toast({
+        title: "Phone login not implemented",
+        description: "This feature is not fully implemented yet.",
+      })
+    } catch (error) {
+      console.error("Phone login error:", error)
+      toast({
+        title: "Login failed",
+        description: "Please check your credentials and try again.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-      // Redirect to dashboard would happen here
-      window.location.href = "/dashboard"
-    }, 1500)
+    }
   }
 
   return (
