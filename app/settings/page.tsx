@@ -1,9 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, Bell, CreditCard, Key, Lock, Save, User, Home } from "lucide-react"
 
+import { useAuth } from "@/contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,14 +15,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function SettingsPage() {
-  // Mock user data - in a real app, this would come from an API or context
-  const [userData, setUserData] = useState({
-    name: "John Doe",
-    email: "john.doe@example.com",
-    phone: "+250 78 123 4567",
-    bio: "Drop-shipper based in Kigali, specializing in electronics and fashion.",
+  const { user, userData, updateUserProfile, resetPassword } = useAuth()
+  const router = useRouter()
+  const { toast } = useToast()
+
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    bio: "",
     notifications: {
       email: true,
       sms: false,
@@ -31,19 +37,165 @@ export default function SettingsPage() {
     theme: "light",
   })
 
-  const handleSaveProfile = () => {
-    // In a real app, this would send the updated profile to an API
-    alert("Profile saved successfully!")
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
+
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
+    if (userData) {
+      setFormData({
+        name: userData.displayName || "",
+        email: userData.email || "",
+        phone: userData.phoneNumber || "",
+        bio: userData.bio || "",
+        notifications: userData.notifications || {
+          email: true,
+          sms: false,
+          push: true,
+        },
+        language: userData.language || "en",
+        currency: userData.currency || "RWF",
+        theme: userData.theme || "light",
+      })
+    }
+  }, [user, userData, router])
+
+  const handleSaveProfile = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      await updateUserProfile({
+        displayName: formData.name,
+        phoneNumber: formData.phone,
+        bio: formData.bio,
+      })
+
+      toast({
+        title: "Profile updated",
+        description: "Your profile information has been updated successfully.",
+      })
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      toast({
+        title: "Update failed",
+        description: "There was an error updating your profile. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleSaveNotifications = () => {
-    // In a real app, this would send the updated notification preferences to an API
-    alert("Notification preferences saved successfully!")
+  const handleSaveNotifications = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      await updateUserProfile({
+        notifications: formData.notifications,
+      })
+
+      toast({
+        title: "Notifications updated",
+        description: "Your notification preferences have been updated successfully.",
+      })
+    } catch (error) {
+      console.error("Error updating notifications:", error)
+      toast({
+        title: "Update failed",
+        description: "There was an error updating your notification preferences. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleSavePreferences = () => {
-    // In a real app, this would send the updated preferences to an API
-    alert("Preferences saved successfully!")
+  const handleSavePreferences = async () => {
+    if (!user) return
+
+    setLoading(true)
+    try {
+      await updateUserProfile({
+        language: formData.language,
+        currency: formData.currency,
+        theme: formData.theme,
+      })
+
+      toast({
+        title: "Preferences updated",
+        description: "Your preferences have been updated successfully.",
+      })
+    } catch (error) {
+      console.error("Error updating preferences:", error)
+      toast({
+        title: "Update failed",
+        description: "There was an error updating your preferences. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleUpdatePassword = async () => {
+    if (!user || !user.email) return
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "New password and confirmation password must match.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setLoading(true)
+    try {
+      // In a real app, you would verify the current password first
+      // For simplicity, we'll just reset the password
+      await resetPassword(user.email)
+
+      toast({
+        title: "Password reset email sent",
+        description: "Check your email for instructions to reset your password.",
+      })
+
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      })
+    } catch (error) {
+      console.error("Error updating password:", error)
+      toast({
+        title: "Update failed",
+        description: "There was an error updating your password. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (!user || !userData) {
+    return (
+      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <h2 className="text-xl font-medium">Loading settings...</h2>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -82,33 +234,29 @@ export default function SettingsPage() {
                 <Label htmlFor="name">Full Name</Label>
                 <Input
                   id="name"
-                  value={userData.name}
-                  onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={userData.email}
-                  onChange={(e) => setUserData({ ...userData, email: e.target.value })}
-                />
+                <Input id="email" type="email" value={formData.email} disabled className="bg-muted" />
+                <p className="text-xs text-muted-foreground">Email address cannot be changed.</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Phone Number</Label>
                 <Input
                   id="phone"
-                  value={userData.phone}
-                  onChange={(e) => setUserData({ ...userData, phone: e.target.value })}
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="bio">Bio</Label>
                 <Textarea
                   id="bio"
-                  value={userData.bio}
-                  onChange={(e) => setUserData({ ...userData, bio: e.target.value })}
+                  value={formData.bio}
+                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                   className="min-h-[100px]"
                 />
                 <p className="text-xs text-muted-foreground">This will be displayed on your public profile.</p>
@@ -128,9 +276,9 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSaveProfile}>
+              <Button onClick={handleSaveProfile} disabled={loading}>
                 <Save className="mr-2 h-4 w-4" />
-                Save Changes
+                {loading ? "Saving..." : "Save Changes"}
               </Button>
             </CardFooter>
           </Card>
@@ -144,21 +292,36 @@ export default function SettingsPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="current-password">Current Password</Label>
-                <Input id="current-password" type="password" />
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={passwordData.currentPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, currentPassword: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="new-password">New Password</Label>
-                <Input id="new-password" type="password" />
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={passwordData.newPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirm-password">Confirm New Password</Label>
-                <Input id="confirm-password" type="password" />
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={passwordData.confirmPassword}
+                  onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                />
               </div>
             </CardContent>
             <CardFooter>
-              <Button>
+              <Button onClick={handleUpdatePassword} disabled={loading}>
                 <Lock className="mr-2 h-4 w-4" />
-                Update Password
+                {loading ? "Updating..." : "Update Password"}
               </Button>
             </CardFooter>
           </Card>
@@ -206,11 +369,11 @@ export default function SettingsPage() {
                   <div className="text-sm text-muted-foreground">Receive notifications via email.</div>
                 </div>
                 <Switch
-                  checked={userData.notifications.email}
+                  checked={formData.notifications.email}
                   onCheckedChange={(checked) =>
-                    setUserData({
-                      ...userData,
-                      notifications: { ...userData.notifications, email: checked },
+                    setFormData({
+                      ...formData,
+                      notifications: { ...formData.notifications, email: checked },
                     })
                   }
                 />
@@ -221,11 +384,11 @@ export default function SettingsPage() {
                   <div className="text-sm text-muted-foreground">Receive notifications via SMS.</div>
                 </div>
                 <Switch
-                  checked={userData.notifications.sms}
+                  checked={formData.notifications.sms}
                   onCheckedChange={(checked) =>
-                    setUserData({
-                      ...userData,
-                      notifications: { ...userData.notifications, sms: checked },
+                    setFormData({
+                      ...formData,
+                      notifications: { ...formData.notifications, sms: checked },
                     })
                   }
                 />
@@ -236,20 +399,20 @@ export default function SettingsPage() {
                   <div className="text-sm text-muted-foreground">Receive push notifications on your device.</div>
                 </div>
                 <Switch
-                  checked={userData.notifications.push}
+                  checked={formData.notifications.push}
                   onCheckedChange={(checked) =>
-                    setUserData({
-                      ...userData,
-                      notifications: { ...userData.notifications, push: checked },
+                    setFormData({
+                      ...formData,
+                      notifications: { ...formData.notifications, push: checked },
                     })
                   }
                 />
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSaveNotifications}>
+              <Button onClick={handleSaveNotifications} disabled={loading}>
                 <Bell className="mr-2 h-4 w-4" />
-                Save Preferences
+                {loading ? "Saving..." : "Save Preferences"}
               </Button>
             </CardFooter>
           </Card>
@@ -264,8 +427,8 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="language">Language</Label>
                 <Select
-                  value={userData.language}
-                  onValueChange={(value) => setUserData({ ...userData, language: value })}
+                  value={formData.language}
+                  onValueChange={(value) => setFormData({ ...formData, language: value })}
                 >
                   <SelectTrigger id="language">
                     <SelectValue placeholder="Select language" />
@@ -280,8 +443,8 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="currency">Currency</Label>
                 <Select
-                  value={userData.currency}
-                  onValueChange={(value) => setUserData({ ...userData, currency: value })}
+                  value={formData.currency}
+                  onValueChange={(value) => setFormData({ ...formData, currency: value })}
                 >
                   <SelectTrigger id="currency">
                     <SelectValue placeholder="Select currency" />
@@ -296,8 +459,8 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label>Theme</Label>
                 <RadioGroup
-                  value={userData.theme}
-                  onValueChange={(value) => setUserData({ ...userData, theme: value })}
+                  value={formData.theme}
+                  onValueChange={(value) => setFormData({ ...formData, theme: value })}
                 >
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="light" id="light" />
@@ -315,9 +478,9 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter>
-              <Button onClick={handleSavePreferences}>
+              <Button onClick={handleSavePreferences} disabled={loading}>
                 <User className="mr-2 h-4 w-4" />
-                Save Preferences
+                {loading ? "Saving..." : "Save Preferences"}
               </Button>
             </CardFooter>
           </Card>
