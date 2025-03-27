@@ -1,6 +1,7 @@
 import type React from "react"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
+import { AuthProviderWrapper } from "@/components/auth/auth-provider-wrapper"
 import "./globals.css"
 
 export default function RootLayout({
@@ -17,10 +18,12 @@ export default function RootLayout({
         <link rel="icon" href="/favicon.ico" />
       </head>
       <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-          <Toaster />
-        </ThemeProvider>
+        <AuthProviderWrapper>
+          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+            {children}
+            <Toaster />
+          </ThemeProvider>
+        </AuthProviderWrapper>
       </body>
     </html>
   )
