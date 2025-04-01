@@ -1,19 +1,94 @@
-import { ArrowUpRight, DollarSign, Package, ShoppingCart, Truck, Users } from "lucide-react"
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { ArrowUpRight, DollarSign, Package, ShoppingCart, Truck, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
+import { getUserProfile } from "@/lib/supabase/auth"
+import { getProducts } from "@/lib/supabase/products"
+import { getOrders } from "@/lib/supabase/orders"
+import { getPartnerships } from "@/lib/supabase/partnerships"
 
 export default function DashboardPage() {
-  // This would come from API in a real app
-  const userType = "dropshipper" // or "wholesaler", "customer", "admin"
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [products, setProducts] = useState<any[]>([])
+  const [orders, setOrders] = useState<any[]>([])
+  const [partnerships, setPartnerships] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch user profile
+        const profile = await getUserProfile()
+        setUserProfile(profile)
+
+        // Fetch products (for wholesalers or dropshippers)
+        if (profile?.user_type === "wholesaler" || profile?.user_type === "dropshipper") {
+          const { data: productsData } = await getProducts({ limit: 3 })
+          setProducts(productsData || [])
+        }
+
+        // Fetch orders
+        const { data: ordersData } = await getOrders({ limit: 3 })
+        setOrders(ordersData || [])
+
+        // Fetch partnerships (for wholesalers or dropshippers)
+        if (profile?.user_type === "wholesaler" || profile?.user_type === "dropshipper") {
+          const partnershipsData = await getPartnerships({
+            role: profile.user_type as "wholesaler" | "dropshipper",
+            status: "active",
+          })
+          setPartnerships(partnershipsData || [])
+        }
+      } catch (error) {
+        console.error("Error fetching dashboard data:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load dashboard data. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [toast])
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
+  }
+
+  const userType = userProfile?.user_type || "customer"
+
+  // Calculate stats
+  const totalSales = orders.reduce((sum, order) => sum + order.total, 0)
+  const activeOrders = orders.filter(
+    (order) => order.status === "pending" || order.status === "processing" || order.status === "shipped",
+  ).length
+  const newOrdersToday = orders.filter((order) => {
+    const orderDate = new Date(order.created_at)
+    const today = new Date()
+    return orderDate.toDateString() === today.toDateString()
+  }).length
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome back! Here's an overview of your {userType} account.</p>
+        <p className="text-muted-foreground">
+          Welcome back, {userProfile?.full_name || "User"}! Here's an overview of your {userType} account.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -23,8 +98,8 @@ export default function DashboardPage() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">RWF 45,231</div>
-            <p className="text-xs text-muted-foreground">+20.1% from last month</p>
+            <div className="text-2xl font-bold">RWF {totalSales.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">From {orders.length} orders</p>
           </CardContent>
         </Card>
         <Card>
@@ -33,8 +108,8 @@ export default function DashboardPage() {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">+8 new orders today</p>
+            <div className="text-2xl font-bold">{activeOrders}</div>
+            <p className="text-xs text-muted-foreground">{newOrdersToday} new orders today</p>
           </CardContent>
         </Card>
         {userType === "dropshipper" ? (
@@ -44,8 +119,8 @@ export default function DashboardPage() {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">48</div>
-              <p className="text-xs text-muted-foreground">From 5 different suppliers</p>
+              <div className="text-2xl font-bold">{products.length}</div>
+              <p className="text-xs text-muted-foreground">From {partnerships.length} different suppliers</p>
             </CardContent>
           </Card>
         ) : (
@@ -55,8 +130,10 @@ export default function DashboardPage() {
               <Package className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">124</div>
-              <p className="text-xs text-muted-foreground">8 items low in stock</p>
+              <div className="text-2xl font-bold">{products.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {products.filter((p) => p.stock < 10).length} items low in stock
+              </p>
             </CardContent>
           </Card>
         )}
@@ -67,8 +144,10 @@ export default function DashboardPage() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">5</div>
-              <p className="text-xs text-muted-foreground">2 pending requests</p>
+              <div className="text-2xl font-bold">{partnerships.length}</div>
+              <p className="text-xs text-muted-foreground">
+                {partnerships.filter((p) => p.status === "pending").length} pending requests
+              </p>
             </CardContent>
           </Card>
         ) : (
@@ -78,8 +157,10 @@ export default function DashboardPage() {
               <Truck className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">9</div>
-              <p className="text-xs text-muted-foreground">3 pending shipments</p>
+              <div className="text-2xl font-bold">{orders.filter((order) => order.status === "shipped").length}</div>
+              <p className="text-xs text-muted-foreground">
+                {orders.filter((order) => order.status === "processing").length} pending shipments
+              </p>
             </CardContent>
           </Card>
         )}
@@ -98,51 +179,61 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Recent Orders</CardTitle>
-              <CardDescription>
-                You have {userType === "dropshipper" ? "received" : "received"} 12 orders this month.
-              </CardDescription>
+              <CardDescription>You have {orders.length} orders this month.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {[1, 2, 3].map((order) => (
-                  <Card key={order}>
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-medium">Order #{order}23456</CardTitle>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm">Status:</div>
-                        <div className="text-sm font-medium">
-                          {order === 1 ? (
-                            <span className="text-yellow-500">Processing</span>
-                          ) : order === 2 ? (
-                            <span className="text-blue-500">Shipped</span>
-                          ) : (
-                            <span className="text-green-500">Delivered</span>
-                          )}
+                {orders.slice(0, 3).map((order) => {
+                  // Get first item image
+                  const firstItem = order.order_items?.[0]
+                  const primaryImage = firstItem?.products?.product_images?.find((img: any) => img.is_primary)
+                  const imageUrl =
+                    primaryImage?.url ||
+                    firstItem?.products?.product_images?.[0]?.url ||
+                    "/placeholder.svg?height=80&width=80&text=No+Image"
+
+                  return (
+                    <Card key={order.id}>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">Order #{order.id.slice(0, 8)}</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pb-2">
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">Status:</div>
+                          <div className="text-sm font-medium">
+                            {order.status === "pending" ? (
+                              <span className="text-yellow-500">Pending</span>
+                            ) : order.status === "processing" ? (
+                              <span className="text-yellow-500">Processing</span>
+                            ) : order.status === "shipped" ? (
+                              <span className="text-blue-500">Shipped</span>
+                            ) : order.status === "delivered" ? (
+                              <span className="text-green-500">Delivered</span>
+                            ) : (
+                              <span className="text-red-500">Cancelled</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm">Date:</div>
-                        <div className="text-sm font-medium">
-                          {order === 1 ? "Today" : order === 2 ? "Yesterday" : "3 days ago"}
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">Date:</div>
+                          <div className="text-sm font-medium">{new Date(order.created_at).toLocaleDateString()}</div>
                         </div>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="text-sm">Total:</div>
-                        <div className="text-sm font-medium">RWF {order * 5000}</div>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button variant="ghost" size="sm" className="w-full" asChild>
-                        <Link href={`/dashboard/orders/${order}`}>
-                          View Details
-                          <ArrowUpRight className="ml-1 h-3 w-3" />
-                        </Link>
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
+                        <div className="flex items-center justify-between">
+                          <div className="text-sm">Total:</div>
+                          <div className="text-sm font-medium">RWF {order.total.toLocaleString()}</div>
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button variant="ghost" size="sm" className="w-full" asChild>
+                          <Link href={`/order-tracking/${order.id}`}>
+                            View Details
+                            <ArrowUpRight className="ml-1 h-3 w-3" />
+                          </Link>
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  )
+                })}
               </div>
             </CardContent>
             <CardFooter>
@@ -156,40 +247,49 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Your Products</CardTitle>
-              <CardDescription>You have 48 products in your store.</CardDescription>
+              <CardDescription>You have {products.length} products in your store.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {[1, 2, 3].map((product) => (
-                  <Card key={product}>
-                    <CardHeader className="pb-2">
-                      <div className="aspect-square w-full overflow-hidden rounded-md">
-                        <img
-                          src={`/placeholder.svg?height=200&width=200&text=Product+${product}`}
-                          alt={`Product ${product}`}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <h3 className="font-medium">Product Name {product}</h3>
-                      <p className="text-sm text-muted-foreground">RWF {product * 2500}</p>
-                      <div className="mt-2 flex items-center text-sm">
-                        <span className={product % 2 === 0 ? "text-green-500" : "text-yellow-500"}>
-                          {product % 2 === 0 ? "In Stock" : "Low Stock"}
-                        </span>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button variant="ghost" size="sm" className="w-full" asChild>
-                        <Link href={`/dashboard/products/${product}`}>
-                          Edit Product
-                          <ArrowUpRight className="ml-1 h-3 w-3" />
-                        </Link>
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
+                {products.slice(0, 3).map((product) => {
+                  // Find primary image
+                  const primaryImage = product.product_images?.find((img: any) => img.is_primary)
+                  const imageUrl =
+                    primaryImage?.url ||
+                    product.product_images?.[0]?.url ||
+                    "/placeholder.svg?height=200&width=200&text=No+Image"
+
+                  return (
+                    <Card key={product.id}>
+                      <CardHeader className="pb-2">
+                        <div className="aspect-square w-full overflow-hidden rounded-md">
+                          <img
+                            src={imageUrl || "/placeholder.svg"}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pb-2">
+                        <h3 className="font-medium">{product.name}</h3>
+                        <p className="text-sm text-muted-foreground">RWF {product.price.toLocaleString()}</p>
+                        <div className="mt-2 flex items-center text-sm">
+                          <span className={product.stock > 10 ? "text-green-500" : "text-yellow-500"}>
+                            {product.stock > 10 ? "In Stock" : "Low Stock"}
+                          </span>
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button variant="ghost" size="sm" className="w-full" asChild>
+                          <Link href={`/dashboard/products/${product.id}`}>
+                            Edit Product
+                            <ArrowUpRight className="ml-1 h-3 w-3" />
+                          </Link>
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  )
+                })}
               </div>
             </CardContent>
             <CardFooter>
@@ -203,41 +303,50 @@ export default function DashboardPage() {
           <Card>
             <CardHeader>
               <CardTitle>Your Inventory</CardTitle>
-              <CardDescription>You have 124 items in your inventory.</CardDescription>
+              <CardDescription>You have {products.length} items in your inventory.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {[1, 2, 3].map((product) => (
-                  <Card key={product}>
-                    <CardHeader className="pb-2">
-                      <div className="aspect-square w-full overflow-hidden rounded-md">
-                        <img
-                          src={`/placeholder.svg?height=200&width=200&text=Product+${product}`}
-                          alt={`Product ${product}`}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <h3 className="font-medium">Inventory Item {product}</h3>
-                      <p className="text-sm text-muted-foreground">RWF {product * 1500}</p>
-                      <div className="mt-2 flex items-center justify-between text-sm">
-                        <span>Stock:</span>
-                        <span className={product * 10 > 20 ? "text-green-500" : "text-yellow-500"}>
-                          {product * 10} units
-                        </span>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button variant="ghost" size="sm" className="w-full" asChild>
-                        <Link href={`/dashboard/inventory/${product}`}>
-                          Manage Stock
-                          <ArrowUpRight className="ml-1 h-3 w-3" />
-                        </Link>
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
+                {products.slice(0, 3).map((product) => {
+                  // Find primary image
+                  const primaryImage = product.product_images?.find((img: any) => img.is_primary)
+                  const imageUrl =
+                    primaryImage?.url ||
+                    product.product_images?.[0]?.url ||
+                    "/placeholder.svg?height=200&width=200&text=No+Image"
+
+                  return (
+                    <Card key={product.id}>
+                      <CardHeader className="pb-2">
+                        <div className="aspect-square w-full overflow-hidden rounded-md">
+                          <img
+                            src={imageUrl || "/placeholder.svg"}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pb-2">
+                        <h3 className="font-medium">{product.name}</h3>
+                        <p className="text-sm text-muted-foreground">RWF {product.price.toLocaleString()}</p>
+                        <div className="mt-2 flex items-center justify-between text-sm">
+                          <span>Stock:</span>
+                          <span className={product.stock > 10 ? "text-green-500" : "text-yellow-500"}>
+                            {product.stock} units
+                          </span>
+                        </div>
+                      </CardContent>
+                      <CardFooter>
+                        <Button variant="ghost" size="sm" className="w-full" asChild>
+                          <Link href={`/dashboard/inventory/${product.id}`}>
+                            Manage Stock
+                            <ArrowUpRight className="ml-1 h-3 w-3" />
+                          </Link>
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  )
+                })}
               </div>
             </CardContent>
             <CardFooter>

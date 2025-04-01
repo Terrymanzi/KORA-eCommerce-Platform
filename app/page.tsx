@@ -70,10 +70,9 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex items-center justify-center">
-                {/* hero section 1 image */}
                 <div className="relative h-[350px] w-full overflow-hidden rounded-xl bg-muted">
                   <img
-                    src="/wasoko.jpg?height=350&width=600"
+                    src="/placeholder.svg?height=350&width=600"
                     alt="KORA Platform Preview"
                     className="object-cover w-full h-full"
                   />

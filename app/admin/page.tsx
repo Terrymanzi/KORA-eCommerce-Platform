@@ -1,21 +1,163 @@
+"use client"
+
+import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowUpRight, BarChart3, CreditCard, DollarSign, Package, ShoppingCart, Store, Users } from "lucide-react"
+import { ArrowUpRight, BarChart3, DollarSign, Package, ShoppingCart, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
+import { supabase } from "@/lib/supabase/client"
 
 export default function AdminDashboardPage() {
-  // Mock data for the admin dashboard
-  const stats = {
-    totalUsers: 1245,
-    totalOrders: 856,
-    totalProducts: 3421,
-    totalRevenue: 12500000,
-    newUsers: 48,
-    pendingOrders: 32,
-    pendingProducts: 15,
-    revenueGrowth: 12.5,
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    totalOrders: 0,
+    totalProducts: 0,
+    totalRevenue: 0,
+    newUsers: 0,
+    pendingOrders: 0,
+    pendingProducts: 0,
+    revenueGrowth: 0,
+  })
+  const [recentUsers, setRecentUsers] = useState<any[]>([])
+  const [recentOrders, setRecentOrders] = useState<any[]>([])
+  const [recentProducts, setRecentProducts] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch users count
+        const { count: usersCount, error: usersError } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+
+        if (usersError) throw usersError
+
+        // Fetch recent users
+        const { data: users, error: recentUsersError } = await supabase
+          .from("profiles")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (recentUsersError) throw recentUsersError
+
+        // Fetch orders count
+        const { count: ordersCount, error: ordersError } = await supabase
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+
+        if (ordersError) throw ordersError
+
+        // Fetch pending orders count
+        const { count: pendingOrdersCount, error: pendingOrdersError } = await supabase
+          .from("orders")
+          .select("*", { count: "exact", head: true })
+          .eq("status", "pending")
+
+        if (pendingOrdersError) throw pendingOrdersError
+
+        // Fetch recent orders
+        const { data: orders, error: recentOrdersError } = await supabase
+          .from("orders")
+          .select(`
+            *,
+            profiles!inner (
+              id,
+              full_name,
+              user_type
+            )
+          `)
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (recentOrdersError) throw recentOrdersError
+
+        // Fetch products count
+        const { count: productsCount, error: productsError } = await supabase
+          .from("products")
+          .select("*", { count: "exact", head: true })
+
+        if (productsError) throw productsError
+
+        // Fetch recent products
+        const { data: products, error: recentProductsError } = await supabase
+          .from("products")
+          .select(`
+            *,
+            product_images (
+              id,
+              url,
+              is_primary
+            ),
+            profiles!supplier_id (
+              id,
+              full_name
+            )
+          `)
+          .order("created_at", { ascending: false })
+          .limit(5)
+
+        if (recentProductsError) throw recentProductsError
+
+        // Calculate total revenue
+        const { data: allOrders, error: allOrdersError } = await supabase.from("orders").select("total")
+
+        if (allOrdersError) throw allOrdersError
+
+        const totalRevenue = allOrders.reduce((sum, order) => sum + order.total, 0)
+
+        // Calculate new users in the last week
+        const oneWeekAgo = new Date()
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
+
+        const { count: newUsersCount, error: newUsersError } = await supabase
+          .from("profiles")
+          .select("*", { count: "exact", head: true })
+          .gte("created_at", oneWeekAgo.toISOString())
+
+        if (newUsersError) throw newUsersError
+
+        // Set stats
+        setStats({
+          totalUsers: usersCount || 0,
+          totalOrders: ordersCount || 0,
+          totalProducts: productsCount || 0,
+          totalRevenue: totalRevenue,
+          newUsers: newUsersCount || 0,
+          pendingOrders: pendingOrdersCount || 0,
+          pendingProducts: 0, // We don't have a pending status for products
+          revenueGrowth: 12.5, // Placeholder, would need to calculate from historical data
+        })
+
+        setRecentUsers(users || [])
+        setRecentOrders(orders || [])
+        setRecentProducts(products || [])
+      } catch (error) {
+        console.error("Error fetching admin dashboard data:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load dashboard data. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [toast])
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    )
   }
 
   return (
@@ -90,23 +232,23 @@ export default function AdminDashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-8">
-              {[1, 2, 3, 4, 5].map((activity) => (
-                <div key={activity} className="flex items-center">
+              {recentOrders.slice(0, 3).map((order, index) => (
+                <div key={order.id} className="flex items-center">
                   <div className="space-y-1">
                     <p className="text-sm font-medium leading-none">
-                      {activity === 1 && "New user registered"}
-                      {activity === 2 && "New order placed"}
-                      {activity === 3 && "Product approved"}
-                      {activity === 4 && "Payment processed"}
-                      {activity === 5 && "New partnership formed"}
+                      New order #{order.id.slice(0, 8)} placed by {order.profiles.full_name}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      {activity === 1 && "2 minutes ago"}
-                      {activity === 2 && "15 minutes ago"}
-                      {activity === 3 && "1 hour ago"}
-                      {activity === 4 && "3 hours ago"}
-                      {activity === 5 && "5 hours ago"}
+                    <p className="text-sm text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+              ))}
+              {recentUsers.slice(0, 2).map((user, index) => (
+                <div key={user.id} className="flex items-center">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      New {user.user_type} registered: {user.full_name}
                     </p>
+                    <p className="text-sm text-muted-foreground">{new Date(user.created_at).toLocaleString()}</p>
                   </div>
                 </div>
               ))}
@@ -129,23 +271,31 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((user) => (
-                  <div key={user} className="flex items-center justify-between">
+                {recentUsers.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="h-10 w-10 rounded-full bg-muted">
-                        <img
-                          src={`/placeholder.svg?height=40&width=40&text=User+${user}`}
-                          alt={`User ${user}`}
-                          className="h-full w-full rounded-full object-cover"
-                        />
+                        {user.avatar_url ? (
+                          <img
+                            src={user.avatar_url || "/placeholder.svg"}
+                            alt={user.full_name}
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {user.full_name.charAt(0)}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div>
-                        <p className="text-sm font-medium">User Name {user}</p>
-                        <p className="text-xs text-muted-foreground">{user % 2 === 0 ? "Dropshipper" : "Wholesaler"}</p>
+                        <p className="text-sm font-medium">{user.full_name}</p>
+                        <p className="text-xs text-muted-foreground capitalize">{user.user_type}</p>
                       </div>
                     </div>
                     <div className="text-sm text-muted-foreground">
-                      Joined {user} {user === 1 ? "day" : "days"} ago
+                      Joined {new Date(user.created_at).toLocaleDateString()}
                     </div>
                   </div>
                 ))}
@@ -166,23 +316,23 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((order) => (
-                  <div key={order} className="flex items-center justify-between">
+                {recentOrders.map((order) => (
+                  <div key={order.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
                         <ShoppingCart className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="text-sm font-medium">Order #{order}12345</p>
+                        <p className="text-sm font-medium">Order #{order.id.slice(0, 8)}</p>
                         <p className="text-xs text-muted-foreground">
-                          {order === 1 ? "2 hours ago" : `${order} days ago`}
+                          {new Date(order.created_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="text-sm font-medium">RWF {(order * 25000).toLocaleString()}</div>
+                      <div className="text-sm font-medium">RWF {order.total.toLocaleString()}</div>
                       <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                        <Link href={`/admin/orders/${order}`}>
+                        <Link href={`/admin/orders/${order.id}`}>
                           <ArrowUpRight className="h-4 w-4" />
                           <span className="sr-only">View order</span>
                         </Link>
@@ -207,34 +357,43 @@ export default function AdminDashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {[1, 2, 3, 4, 5].map((product) => (
-                  <div key={product} className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 overflow-hidden rounded-md">
-                        <img
-                          src={`/placeholder.svg?height=40&width=40&text=Product+${product}`}
-                          alt={`Product ${product}`}
-                          className="h-full w-full object-cover"
-                        />
+                {recentProducts.map((product) => {
+                  // Find primary image
+                  const primaryImage = product.product_images?.find((img: any) => img.is_primary)
+                  const imageUrl =
+                    primaryImage?.url ||
+                    product.product_images?.[0]?.url ||
+                    "/placeholder.svg?height=40&width=40&text=No+Image"
+
+                  return (
+                    <div key={product.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 overflow-hidden rounded-md">
+                          <img
+                            src={imageUrl || "/placeholder.svg"}
+                            alt={product.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{product.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Added {new Date(product.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium">Product Name {product}</p>
-                        <p className="text-xs text-muted-foreground">
-                          Added {product} {product === 1 ? "day" : "days"} ago
-                        </p>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium">RWF {product.price.toLocaleString()}</div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
+                          <Link href={`/admin/products/${product.id}`}>
+                            <ArrowUpRight className="h-4 w-4" />
+                            <span className="sr-only">View product</span>
+                          </Link>
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="text-sm font-medium">RWF {(product * 15000).toLocaleString()}</div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                        <Link href={`/admin/products/${product}`}>
-                          <ArrowUpRight className="h-4 w-4" />
-                          <span className="sr-only">View product</span>
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </CardContent>
             <CardFooter>
@@ -245,67 +404,6 @@ export default function AdminDashboardPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Top Stores</CardTitle>
-            <CardDescription>Best performing stores on the platform</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3].map((store) => (
-                <div key={store} className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                      <Store className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Store Name {store}</p>
-                      <p className="text-xs text-muted-foreground">{100 - store * 20} products</p>
-                    </div>
-                  </div>
-                  <div className="text-sm font-medium">RWF {(store * 500000).toLocaleString()}</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="/admin/stores">View All Stores</Link>
-            </Button>
-          </CardFooter>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Payments</CardTitle>
-            <CardDescription>Recent payment transactions on the platform</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3].map((payment) => (
-                <div key={payment} className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-                      <CreditCard className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Payment #{payment}54321</p>
-                      <p className="text-xs text-muted-foreground">{payment === 1 ? "Today" : `${payment} days ago`}</p>
-                    </div>
-                  </div>
-                  <div className="text-sm font-medium">RWF {(payment * 35000).toLocaleString()}</div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" className="w-full" asChild>
-              <Link href="/admin/payments">View All Payments</Link>
-            </Button>
-          </CardFooter>
-        </Card>
-      </div>
     </div>
   )
 }

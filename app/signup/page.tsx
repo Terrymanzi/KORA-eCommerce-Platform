@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, ShoppingBag } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -11,6 +12,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useToast } from "@/components/ui/use-toast"
+import { signUp } from "@/lib/supabase/auth"
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState("")
@@ -20,17 +23,45 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [userType, setUserType] = useState("dropshipper")
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match.",
+        variant: "destructive",
+      })
       setIsLoading(false)
-      // Redirect to verification page would happen here
-      window.location.href = "/verification"
-    }, 1500)
+      return
+    }
+
+    try {
+      await signUp(email, password, {
+        full_name: fullName,
+        phone,
+        user_type: userType as "dropshipper" | "wholesaler" | "customer",
+      })
+
+      toast({
+        title: "Account created",
+        description: "Your account has been created successfully. Please check your email for verification.",
+      })
+
+      router.push("/login")
+    } catch (error: any) {
+      toast({
+        title: "Signup failed",
+        description: error.message || "An error occurred during signup.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (

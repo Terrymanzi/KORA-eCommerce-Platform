@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, ShoppingBag } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -11,35 +12,48 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
+import { signIn } from "@/lib/supabase/auth"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [phone, setPhone] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await signIn(email, password)
+      router.push("/dashboard")
+      router.refresh()
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-      // Redirect to dashboard would happen here
-      window.location.href = "/dashboard"
-    }, 1500)
+    }
   }
 
   const handlePhoneLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false)
-      // Redirect to dashboard would happen here
-      window.location.href = "/dashboard"
-    }, 1500)
+    // Phone login is not implemented in this version
+    toast({
+      title: "Not implemented",
+      description: "Phone login is not available yet. Please use email login.",
+      variant: "destructive",
+    })
+
+    setIsLoading(false)
   }
 
   return (
