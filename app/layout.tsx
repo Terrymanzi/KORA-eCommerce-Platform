@@ -1,8 +1,17 @@
 import type React from "react"
-import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/toaster"
-import { AuthProviderWrapper } from "@/components/auth/auth-provider-wrapper"
 import "./globals.css"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import { AuthProvider } from "@/contexts/auth-context"
+import { CartProvider } from "@/contexts/cart-context"
+
+const inter = Inter({ subsets: ["latin"] })
+
+export const metadata: Metadata = {
+  title: "KORA - E-commerce Platform",
+  description: "A platform connecting wholesalers and dropshippers",
+    generator: 'v0.dev'
+}
 
 export default function RootLayout({
   children,
@@ -10,20 +19,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <title>KORA - Dropshipping Platform for Rwanda</title>
-        <meta name="description" content="Connect with local suppliers and sell products online in Rwanda" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </head>
-      <body>
-        <AuthProviderWrapper>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-            {children}
-            <Toaster />
-          </ThemeProvider>
-        </AuthProviderWrapper>
+    <html lang="en">
+      <body className={inter.className}>
+        <AuthProvider>
+          <CartProvider>{children}</CartProvider>
+        </AuthProvider>
       </body>
     </html>
   )
@@ -32,7 +32,3 @@ export default function RootLayout({
 
 
 import './globals.css'
-
-export const metadata = {
-      generator: 'v0.dev'
-    };

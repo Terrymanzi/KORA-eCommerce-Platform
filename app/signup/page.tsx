@@ -3,181 +3,147 @@
 import type React from "react"
 
 import { useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, ShoppingBag } from "lucide-react"
-
+import Link from "next/link"
 import { useAuth } from "@/contexts/auth-context"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { useToast } from "@/components/ui/use-toast"
 
 export default function SignupPage() {
-  const [fullName, setFullName] = useState("")
-  const [email, setEmail] = useState("")
-  const [phone, setPhone] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [userType, setUserType] = useState("dropshipper")
-  const [isLoading, setIsLoading] = useState(false)
-  const { signUp } = useAuth()
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+    fullName: "",
+    userType: "customer",
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
-  const { toast } = useToast()
+  const { signUp } = useAuth()
 
-  const handleSignup = async (e: React.FormEvent) => {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+    const { name, value } = e.target
+    setFormData((prev) => ({ ...prev, [name]: value }))
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-
-    if (password !== confirmPassword) {
-      toast({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsLoading(true)
+    setLoading(true)
+    setError(null)
 
     try {
-      await signUp(email, password, fullName, phone, userType as "dropshipper" | "wholesaler" | "customer" | "admin")
+      const userData = {
+        full_name: formData.fullName,
+        email: formData.email,
+        user_type: formData.userType as "admin" | "wholesaler" | "dropshipper" | "customer",
+      }
 
-      toast({
-        title: "Account created",
-        description: "Your account has been created successfully.",
-      })
+      const { success, error } = await signUp(formData.email, formData.password, userData)
 
-      // Redirect to verification page or dashboard
+      if (!success) {
+        throw error || new Error("Failed to sign up")
+      }
+
       router.push("/dashboard")
-    } catch (error: any) {
-      console.error("Signup error:", error)
-      toast({
-        title: "Signup failed",
-        description: error.message || "An error occurred during signup.",
-        variant: "destructive",
-      })
+    } catch (err) {
+      console.error("Signup error:", err)
+      setError("Failed to create account. Please try again.")
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
   return (
-    <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <Link href="/" className="absolute left-4 top-4 md:left-8 md:top-8 flex items-center gap-2">
-        <ArrowLeft className="h-4 w-4" />
-        Back to home
-      </Link>
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[450px]">
-        <div className="flex flex-col space-y-2 text-center">
-          <div className="flex justify-center">
-            <ShoppingBag className="h-8 w-8" />
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">Create a new account</h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Or{" "}
+            <Link href="/login" className="font-medium text-indigo-600 hover:text-indigo-500">
+              sign in to your existing account
+            </Link>
+          </p>
+        </div>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <label htmlFor="full-name" className="sr-only">
+                Full Name
+              </label>
+              <input
+                id="full-name"
+                name="fullName"
+                type="text"
+                autoComplete="name"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Full Name"
+                value={formData.fullName}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="email-address" className="sr-only">
+                Email address
+              </label>
+              <input
+                id="email-address"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Email address"
+                value={formData.email}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Password"
+                value={formData.password}
+                onChange={handleChange}
+              />
+            </div>
+            <div>
+              <label htmlFor="user-type" className="sr-only">
+                Account Type
+              </label>
+              <select
+                id="user-type"
+                name="userType"
+                required
+                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                value={formData.userType}
+                onChange={handleChange}
+              >
+                <option value="customer">Customer</option>
+                <option value="wholesaler">Wholesaler</option>
+                <option value="dropshipper">Dropshipper</option>
+              </select>
+            </div>
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Create your KORA account</h1>
-          <p className="text-sm text-muted-foreground">Join Rwanda's premier dropshipping platform</p>
-        </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign Up</CardTitle>
-            <CardDescription>Enter your details to create an account</CardDescription>
-          </CardHeader>
-          <form onSubmit={handleSignup}>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="fullName">Full Name</Label>
-                <Input
-                  id="fullName"
-                  placeholder="John Doe"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone Number</Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="07X XXX XXXX"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>I am a:</Label>
-                <RadioGroup defaultValue="dropshipper" value={userType} onValueChange={setUserType}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="dropshipper" id="dropshipper" />
-                    <Label htmlFor="dropshipper">Drop-shipper</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="wholesaler" id="wholesaler" />
-                    <Label htmlFor="wholesaler">Wholesaler</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="customer" id="customer" />
-                    <Label htmlFor="customer">Customer</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? "Creating account..." : "Create account"}
-              </Button>
-              <p className="text-xs text-center text-muted-foreground">
-                By clicking create account, you agree to our{" "}
-                <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="underline underline-offset-4 hover:text-primary">
-                  Privacy Policy
-                </Link>
-                .
-              </p>
-            </CardFooter>
-          </form>
-        </Card>
-        <div className="text-center text-sm">
-          Already have an account?{" "}
-          <Link href="/login" className="underline underline-offset-4 hover:text-primary">
-            Log in
-          </Link>
-        </div>
+
+          {error && <div className="text-red-500 text-sm">{error}</div>}
+
+          <div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+            >
+              {loading ? "Creating account..." : "Create account"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   )

@@ -3,226 +3,128 @@
 import type React from "react"
 
 import { createContext, useContext, useEffect, useState } from "react"
-import {
-  type User,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  updateProfile,
-  sendPasswordResetEmail,
-  PhoneAuthProvider,
-  signInWithCredential,
-} from "firebase/auth"
-import { ref, set, get } from "firebase/database"
-import { auth, database } from "@/lib/firebase"
+import type { Profile } from "@/types/supabase"
+import { getCurrentUser, signIn, signOut, signUp, updateProfile } from "@/lib/supabase/auth"
 
-type UserRole = "dropshipper" | "wholesaler" | "customer" | "admin"
-
-interface UserData {
-  uid: string
-  email: string | null
-  displayName: string | null
-  phoneNumber: string | null
-  role: UserRole
-  createdAt: number
-}
-
-interface AuthContextType {
-  user: User | null
-  userData: UserData | null
+type AuthContextType = {
+  user: Profile | null
   loading: boolean
-  signUp: (email: string, password: string, fullName: string, phone: string, role: UserRole) => Promise<void>
-  signIn: (email: string, password: string) => Promise<void>
-  signInWithPhone: (verificationId: string, code: string) => Promise<void>
-  logout: () => Promise<void>
-  resetPassword: (email: string) => Promise<void>
-  updateUserProfile: (data: Partial<UserData>) => Promise<void>
+  signIn: (email: string) => Promise<{ success: boolean; error: any }>
+  signUp: (email: string, password: string, userData: any) => Promise<{ success: boolean; error: any }>
+  signOut: () => Promise<void>
+  updateUser: (updates: Partial<Profile>) => Promise<{ success: boolean; error: any }>
 }
 
-const AuthContext = createContext<AuthContextType | null>(null)
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<User | null>(null)
-  const [userData, setUserData] = useState<UserData | null>(null)
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<Profile | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Only run this effect on the client side
-    if (typeof window === "undefined" || !auth) return
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user)
-
-      if (user && database) {
-        // Fetch additional user data from the database
-        try {
-          const userRef = ref(database, `users/${user.uid}`)
-          const snapshot = await get(userRef)
-          if (snapshot.exists()) {
-            setUserData(snapshot.val())
-          }
-        } catch (error) {
-          console.error("Error fetching user data:", error)
-        }
-      } else {
-        setUserData(null)
+    async function loadUser() {
+      try {
+        const { data } = await getCurrentUser()
+        setUser(data)
+      } catch (error) {
+        console.error("Error loading user:", error)
+      } finally {
+        setLoading(false)
       }
+    }
 
-      setLoading(false)
-    })
-
-    return () => unsubscribe()
+    loadUser()
   }, [])
 
-  const signUp = async (email: string, password: string, fullName: string, phone: string, role: UserRole) => {
-    if (!auth || !database) throw new Error("Firebase not initialized")
-
+  async function handleSignIn(email: string) {
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-      const user = userCredential.user
+      const { data, error } = await signIn(email)
 
-      // Update profile
-      await updateProfile(user, {
-        displayName: fullName,
-      })
+      if (error) throw error
 
-      // Save additional user data to the database
-      const userData: UserData = {
-        uid: user.uid,
-        email: user.email,
-        displayName: fullName,
-        phoneNumber: phone,
-        role: role,
-        createdAt: Date.now(),
-      }
+      setUser(data)
 
-      await set(ref(database, `users/${user.uid}`), userData)
-      setUserData(userData)
+      // Set cookie for server-side auth check
+      document.cookie = `user=${JSON.stringify(data)}; path=/; max-age=604800; SameSite=Strict`
 
-      return user
-    } catch (error) {
-      console.error("Error signing up:", error)
-      throw error
-    }
-  }
-
-  const signIn = async (email: string, password: string) => {
-    if (!auth) throw new Error("Firebase not initialized")
-
-    try {
-      await signInWithEmailAndPassword(auth, email, password)
+      return { success: true, error: null }
     } catch (error) {
       console.error("Error signing in:", error)
-      throw error
+      return { success: false, error }
     }
   }
 
-  const signInWithPhone = async (verificationId: string, code: string) => {
-    if (!auth) throw new Error("Firebase not initialized")
-
+  async function handleSignUp(email: string, password: string, userData: any) {
     try {
-      const credential = PhoneAuthProvider.credential(verificationId, code)
-      await signInWithCredential(auth, credential)
+      const { data, error } = await signUp(email, password, userData)
+
+      if (error) throw error
+
+      setUser(data)
+
+      // Set cookie for server-side auth check
+      document.cookie = `user=${JSON.stringify(data)}; path=/; max-age=604800; SameSite=Strict`
+
+      return { success: true, error: null }
     } catch (error) {
-      console.error("Error signing in with phone:", error)
-      throw error
+      console.error("Error signing up:", error)
+      return { success: false, error }
     }
   }
 
-  const logout = async () => {
-    if (!auth) throw new Error("Firebase not initialized")
-
+  async function handleSignOut() {
     try {
-      await signOut(auth)
+      await signOut()
+      setUser(null)
+
+      // Clear cookie
+      document.cookie = "user=; path=/; max-age=0; SameSite=Strict"
     } catch (error) {
       console.error("Error signing out:", error)
-      throw error
     }
   }
 
-  const resetPassword = async (email: string) => {
-    if (!auth) throw new Error("Firebase not initialized")
-
+  async function handleUpdateUser(updates: Partial<Profile>) {
     try {
-      await sendPasswordResetEmail(auth, email)
+      if (!user) throw new Error("No user logged in")
+
+      const { data, error } = await updateProfile(user.id, updates)
+
+      if (error) throw error
+
+      setUser(data)
+
+      // Update cookie
+      document.cookie = `user=${JSON.stringify(data)}; path=/; max-age=604800; SameSite=Strict`
+
+      return { success: true, error: null }
     } catch (error) {
-      console.error("Error resetting password:", error)
-      throw error
+      console.error("Error updating user:", error)
+      return { success: false, error }
     }
   }
 
-  const updateUserProfile = async (data: Partial<UserData>) => {
-    if (!user || !auth || !database) throw new Error("User not logged in or Firebase not initialized")
-
-    try {
-      // Update in Firebase Auth if name is provided
-      if (data.displayName) {
-        await updateProfile(user, {
-          displayName: data.displayName,
-        })
-      }
-
-      // Update in Realtime Database
-      const userRef = ref(database, `users/${user.uid}`)
-      const snapshot = await get(userRef)
-
-      if (snapshot.exists()) {
-        const currentData = snapshot.val()
-        const updatedData = { ...currentData, ...data }
-        await set(userRef, updatedData)
-        setUserData(updatedData)
-      }
-    } catch (error) {
-      console.error("Error updating profile:", error)
-      throw error
-    }
-  }
-
-  // Provide a default value when Firebase is not initialized (SSR)
-  if (typeof window === "undefined" || !auth || !database) {
-    return (
-      <AuthContext.Provider
-        value={{
-          user: null,
-          userData: null,
-          loading: false,
-          signUp: async () => {},
-          signIn: async () => {},
-          signInWithPhone: async () => {},
-          logout: async () => {},
-          resetPassword: async () => {},
-          updateUserProfile: async () => {},
-        }}
-      >
-        {children}
-      </AuthContext.Provider>
-    )
-  }
-
-  const value = {
-    user,
-    userData,
-    loading,
-    signUp,
-    signIn,
-    signInWithPhone,
-    logout,
-    resetPassword,
-    updateUserProfile,
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        signIn: handleSignIn,
+        signUp: handleSignUp,
+        signOut: handleSignOut,
+        updateUser: handleUpdateUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
-export const useAuth = () => {
+export function useAuth() {
   const context = useContext(AuthContext)
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
 }
-
-// Default export for dynamic import
-export default { AuthProvider }
 

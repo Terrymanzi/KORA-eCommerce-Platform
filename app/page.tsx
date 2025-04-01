@@ -1,5 +1,3 @@
-"use client"
-
 import Link from "next/link"
 import { ArrowRight, CheckCircle, ShoppingBag, Store, Truck, Users } from "lucide-react"
 

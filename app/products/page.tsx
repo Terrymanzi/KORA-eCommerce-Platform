@@ -1,54 +1,141 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Filter, Search, ShoppingBag, ShoppingCart, ArrowLeft } from "lucide-react"
 
-import { productService, type Product } from "@/services/product-service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Slider } from "@/components/ui/slider"
-import { useToast } from "@/components/ui/use-toast"
+
+// Mock product data
+const mockProducts = [
+  {
+    id: 1,
+    name: "Smartphone X",
+    price: 120000,
+    category: "Electronics",
+    supplier: "TechHub Rwanda",
+    rating: 4.5,
+    image: "/placeholder.svg?height=200&width=200&text=Smartphone",
+  },
+  {
+    id: 2,
+    name: "Designer T-Shirt",
+    price: 15000,
+    category: "Clothing",
+    supplier: "Fashion House",
+    rating: 4.2,
+    image: "/placeholder.svg?height=200&width=200&text=T-Shirt",
+  },
+  {
+    id: 3,
+    name: "Coffee Maker",
+    price: 45000,
+    category: "Home & Kitchen",
+    supplier: "HomeGoods Rwanda",
+    rating: 4.7,
+    image: "/placeholder.svg?height=200&width=200&text=Coffee+Maker",
+  },
+  {
+    id: 4,
+    name: "Leather Backpack",
+    price: 35000,
+    category: "Accessories",
+    supplier: "LeatherCraft",
+    rating: 4.3,
+    image: "/placeholder.svg?height=200&width=200&text=Backpack",
+  },
+  {
+    id: 5,
+    name: "Wireless Earbuds",
+    price: 30000,
+    category: "Electronics",
+    supplier: "TechHub Rwanda",
+    rating: 4.1,
+    image: "/placeholder.svg?height=200&width=200&text=Earbuds",
+  },
+  {
+    id: 6,
+    name: "Yoga Mat",
+    price: 12000,
+    category: "Sports",
+    supplier: "FitLife",
+    rating: 4.6,
+    image: "/placeholder.svg?height=200&width=200&text=Yoga+Mat",
+  },
+  {
+    id: 7,
+    name: "Smart Watch",
+    price: 85000,
+    category: "Electronics",
+    supplier: "TechHub Rwanda",
+    rating: 4.4,
+    image: "/placeholder.svg?height=200&width=200&text=Smart+Watch",
+  },
+  {
+    id: 8,
+    name: "Desk Lamp",
+    price: 18000,
+    category: "Home & Kitchen",
+    supplier: "HomeGoods Rwanda",
+    rating: 4.0,
+    image: "/placeholder.svg?height=200&width=200&text=Desk+Lamp",
+  },
+  {
+    id: 9,
+    name: "Running Shoes",
+    price: 40000,
+    category: "Sports",
+    supplier: "FitLife",
+    rating: 4.8,
+    image: "/placeholder.svg?height=200&width=200&text=Running+Shoes",
+  },
+  {
+    id: 10,
+    name: "Bluetooth Speaker",
+    price: 25000,
+    category: "Electronics",
+    supplier: "TechHub Rwanda",
+    rating: 4.2,
+    image: "/placeholder.svg?height=200&width=200&text=Speaker",
+  },
+  {
+    id: 11,
+    name: "Denim Jeans",
+    price: 22000,
+    category: "Clothing",
+    supplier: "Fashion House",
+    rating: 4.3,
+    image: "/placeholder.svg?height=200&width=200&text=Jeans",
+  },
+  {
+    id: 12,
+    name: "Stainless Steel Water Bottle",
+    price: 8000,
+    category: "Accessories",
+    supplier: "HomeGoods Rwanda",
+    rating: 4.5,
+    image: "/placeholder.svg?height=200&width=200&text=Water+Bottle",
+  },
+]
 
 export default function ProductsPage() {
-  const [products, setProducts] = useState<Product[]>([])
-  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState("all")
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [priceRange, setPriceRange] = useState([0, 150000])
   const [sortBy, setSortBy] = useState("featured")
-  const { toast } = useToast()
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const allProducts = await productService.getAllProducts()
-        setProducts(allProducts)
-      } catch (error) {
-        console.error("Error fetching products:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load products. Please try again later.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchProducts()
-  }, [toast])
 
   // Get unique categories and suppliers for filters
-  const categories = ["all", ...Array.from(new Set(products.map((p) => p.category)))]
-  const suppliers = ["all", ...Array.from(new Set(products.map((p) => p.supplier)))]
+  const categories = ["all", ...Array.from(new Set(mockProducts.map((p) => p.category)))]
+  const suppliers = ["all", ...Array.from(new Set(mockProducts.map((p) => p.supplier)))]
 
   // Filter products based on search term, category, supplier, and price range
-  const filteredProducts = products.filter((product) => {
+  const filteredProducts = mockProducts.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
     const matchesSupplier = supplierFilter === "all" || product.supplier === supplierFilter
@@ -65,22 +152,11 @@ export default function ProductsPage() {
       case "price-high-low":
         return b.price - a.price
       case "rating":
-        return (b.rating || 0) - (a.rating || 0)
+        return b.rating - a.rating
       default: // featured
         return 0
     }
   })
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <ShoppingBag className="h-12 w-12 mx-auto mb-4 animate-pulse" />
-          <h2 className="text-xl font-medium">Loading products...</h2>
-        </div>
-      </div>
-    )
-  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -205,7 +281,7 @@ export default function ProductsPage() {
               <Link href={`/products/${product.id}`}>
                 <div className="aspect-square w-full overflow-hidden">
                   <img
-                    src={product.images[0] || "/placeholder.svg"}
+                    src={product.image || "/placeholder.svg"}
                     alt={product.name}
                     className="h-full w-full object-cover transition-transform hover:scale-105"
                   />
@@ -218,15 +294,12 @@ export default function ProductsPage() {
                   <div className="flex items-center gap-1">
                     <div className="flex">
                       {[...Array(5)].map((_, i) => (
-                        <span
-                          key={i}
-                          className={i < Math.floor(product.rating || 0) ? "text-yellow-400" : "text-gray-300"}
-                        >
+                        <span key={i} className={i < Math.floor(product.rating) ? "text-yellow-400" : "text-gray-300"}>
                           ★
                         </span>
                       ))}
                     </div>
-                    <span className="text-xs text-muted-foreground">({product.reviews || 0})</span>
+                    <span className="text-xs text-muted-foreground">({product.rating})</span>
                   </div>
                   <p className="font-bold">RWF {product.price.toLocaleString()}</p>
                 </div>

@@ -1,130 +1,88 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { ArrowLeft, Check, Heart, ShoppingCart, Star, Truck, Home } from "lucide-react"
 
-import { productService, type Product } from "@/services/product-service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/components/ui/use-toast"
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
-  const [product, setProduct] = useState<Product | null>(null)
-  const [loading, setLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState(0)
   const [quantity, setQuantity] = useState(1)
   const [color, setColor] = useState("black")
-  const [relatedProducts, setRelatedProducts] = useState<Product[]>([])
-  const router = useRouter()
-  const { toast } = useToast()
 
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const productData = await productService.getProductById(params.id)
-        if (!productData) {
-          toast({
-            title: "Product not found",
-            description: "The requested product could not be found.",
-            variant: "destructive",
-          })
-          router.push("/products")
-          return
-        }
-
-        setProduct(productData)
-
-        // Set default color if available
-        if (productData.colors && productData.colors.length > 0) {
-          setColor(productData.colors[0])
-        }
-
-        // Fetch related products from the same category
-        const categoryProducts = await productService.getProductsByCategory(productData.category)
-        const filtered = categoryProducts.filter((p) => p.id !== productData.id).slice(0, 3)
-        setRelatedProducts(filtered)
-      } catch (error) {
-        console.error("Error fetching product:", error)
-        toast({
-          title: "Error",
-          description: "Failed to load product details. Please try again later.",
-          variant: "destructive",
-        })
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchProduct()
-  }, [params.id, router, toast])
+  // Mock product data - in a real app, this would come from an API
+  const product = {
+    id: Number.parseInt(params.id),
+    name: "Smartphone X",
+    price: 120000,
+    description:
+      "The latest smartphone with cutting-edge features and technology. Experience the future of mobile computing with this powerful device.",
+    longDescription:
+      "The Smartphone X represents the pinnacle of mobile technology, combining sleek design with powerful performance. Featuring a stunning 6.5-inch AMOLED display, the latest processor, and a revolutionary camera system, this device sets a new standard for smartphones. The 5000mAh battery ensures all-day usage, while the fast charging capability gets you back to 50% in just 30 minutes. With 128GB of storage expandable up to 1TB, you'll never run out of space for your photos, videos, and apps. The device is water and dust resistant with an IP68 rating, making it perfect for any environment. Experience the future of mobile computing with the Smartphone X.",
+    category: "Electronics",
+    supplier: "TechHub Rwanda",
+    rating: 4.5,
+    reviews: 128,
+    stock: 25,
+    colors: ["black", "white", "blue"],
+    images: [
+      "/placeholder.svg?height=500&width=500&text=Smartphone+Front",
+      "/placeholder.svg?height=500&width=500&text=Smartphone+Back",
+      "/placeholder.svg?height=500&width=500&text=Smartphone+Side",
+      "/placeholder.svg?height=500&width=500&text=Smartphone+Camera",
+    ],
+    specifications: [
+      { name: "Display", value: "6.5-inch AMOLED" },
+      { name: "Processor", value: "Octa-core 2.8GHz" },
+      { name: "RAM", value: "8GB" },
+      { name: "Storage", value: "128GB" },
+      { name: "Camera", value: "48MP + 12MP + 8MP" },
+      { name: "Battery", value: "5000mAh" },
+      { name: "OS", value: "Android 13" },
+    ],
+    features: [
+      "Fast charging capability",
+      "Water and dust resistant (IP68)",
+      "Expandable storage up to 1TB",
+      "Dual SIM support",
+      "5G connectivity",
+    ],
+    relatedProducts: [
+      {
+        id: 5,
+        name: "Wireless Earbuds",
+        price: 30000,
+        image: "/placeholder.svg?height=200&width=200&text=Earbuds",
+      },
+      {
+        id: 7,
+        name: "Smart Watch",
+        price: 85000,
+        image: "/placeholder.svg?height=200&width=200&text=Smart+Watch",
+      },
+      {
+        id: 10,
+        name: "Bluetooth Speaker",
+        price: 25000,
+        image: "/placeholder.svg?height=200&width=200&text=Speaker",
+      },
+    ],
+  }
 
   const handleAddToCart = () => {
     // In a real app, this would add the product to a cart context or send to an API
-    toast({
-      title: "Added to cart",
-      description: `Added ${quantity} ${product?.name} (${color}) to cart`,
-    })
+    alert(`Added ${quantity} ${product.name} (${color}) to cart`)
   }
 
   const handleBuyNow = () => {
     // In a real app, this would add the product to cart and redirect to checkout
-    router.push("/checkout")
-  }
-
-  const handleAddReview = async (rating: number) => {
-    if (!product) return
-
-    try {
-      await productService.addProductReview(product.id, rating)
-      toast({
-        title: "Review submitted",
-        description: "Thank you for your feedback!",
-      })
-
-      // Refresh product data to show updated rating
-      const updatedProduct = await productService.getProductById(product.id)
-      if (updatedProduct) {
-        setProduct(updatedProduct)
-      }
-    } catch (error) {
-      console.error("Error adding review:", error)
-      toast({
-        title: "Error",
-        description: "Failed to submit review. Please try again later.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <ShoppingCart className="h-12 w-12 mx-auto mb-4 animate-pulse" />
-          <h2 className="text-xl font-medium">Loading product details...</h2>
-        </div>
-      </div>
-    )
-  }
-
-  if (!product) {
-    return (
-      <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <h2 className="text-xl font-medium">Product not found</h2>
-          <p className="mt-2 text-muted-foreground">The requested product could not be found.</p>
-          <Button className="mt-4" asChild>
-            <Link href="/products">Browse Products</Link>
-          </Button>
-        </div>
-      </div>
-    )
+    window.location.href = "/checkout"
   }
 
   return (
@@ -177,13 +135,13 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                   <Star
                     key={i}
                     className={`h-5 w-5 ${
-                      i < Math.floor(product.rating || 0) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                      i < Math.floor(product.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
                     }`}
                   />
                 ))}
               </div>
               <span className="text-sm text-muted-foreground">
-                {product.rating || 0} ({product.reviews || 0} reviews)
+                {product.rating} ({product.reviews} reviews)
               </span>
             </div>
             <div className="mt-4 text-3xl font-bold">RWF {product.price.toLocaleString()}</div>
@@ -197,35 +155,33 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
               <p className="mt-2 text-muted-foreground">{product.description}</p>
             </div>
 
-            {product.colors && product.colors.length > 0 && (
-              <div>
-                <h3 className="font-medium">Color</h3>
-                <RadioGroup value={color} onValueChange={setColor} className="mt-2 flex gap-2">
-                  {product.colors.map((colorOption) => (
-                    <div key={colorOption} className="flex items-center gap-2">
-                      <RadioGroupItem value={colorOption} id={`color-${colorOption}`} className="sr-only" />
-                      <Label
-                        htmlFor={`color-${colorOption}`}
-                        className={`relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-full ${
-                          colorOption === "black"
-                            ? "bg-black"
-                            : colorOption === "white"
-                              ? "bg-white border"
-                              : colorOption === "blue"
-                                ? "bg-blue-500"
-                                : ""
-                        } ${color === colorOption ? "ring-2 ring-primary ring-offset-2" : ""}`}
-                      >
-                        {color === colorOption && (
-                          <Check className={`h-4 w-4 ${colorOption === "white" ? "text-black" : "text-white"}`} />
-                        )}
-                        <span className="sr-only">{colorOption}</span>
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
-              </div>
-            )}
+            <div>
+              <h3 className="font-medium">Color</h3>
+              <RadioGroup value={color} onValueChange={setColor} className="mt-2 flex gap-2">
+                {product.colors.map((colorOption) => (
+                  <div key={colorOption} className="flex items-center gap-2">
+                    <RadioGroupItem value={colorOption} id={`color-${colorOption}`} className="sr-only" />
+                    <Label
+                      htmlFor={`color-${colorOption}`}
+                      className={`relative flex h-8 w-8 cursor-pointer items-center justify-center rounded-full ${
+                        colorOption === "black"
+                          ? "bg-black"
+                          : colorOption === "white"
+                            ? "bg-white border"
+                            : colorOption === "blue"
+                              ? "bg-blue-500"
+                              : ""
+                      } ${color === colorOption ? "ring-2 ring-primary ring-offset-2" : ""}`}
+                    >
+                      {color === colorOption && (
+                        <Check className={`h-4 w-4 ${colorOption === "white" ? "text-black" : "text-white"}`} />
+                      )}
+                      <span className="sr-only">{colorOption}</span>
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
 
             <div>
               <h3 className="font-medium">Quantity</h3>
@@ -285,57 +241,49 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           </TabsList>
           <TabsContent value="details" className="mt-6">
             <div className="space-y-4">
-              <p>{product.longDescription || product.description}</p>
-              {product.features && product.features.length > 0 && (
-                <>
-                  <h3 className="text-lg font-medium">Key Features</h3>
-                  <ul className="list-inside list-disc space-y-2">
-                    {product.features.map((feature, index) => (
-                      <li key={index}>{feature}</li>
-                    ))}
-                  </ul>
-                </>
-              )}
+              <p>{product.longDescription}</p>
+              <h3 className="text-lg font-medium">Key Features</h3>
+              <ul className="list-inside list-disc space-y-2">
+                {product.features.map((feature, index) => (
+                  <li key={index}>{feature}</li>
+                ))}
+              </ul>
             </div>
           </TabsContent>
           <TabsContent value="specifications" className="mt-6">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Technical Specifications</h3>
-              {product.specifications && product.specifications.length > 0 ? (
-                <div className="rounded-lg border">
-                  {product.specifications.map((spec, index) => (
-                    <div
-                      key={index}
-                      className={`flex justify-between p-3 ${
-                        index !== product.specifications!.length - 1 ? "border-b" : ""
-                      }`}
-                    >
-                      <span className="font-medium">{spec.name}</span>
-                      <span className="text-muted-foreground">{spec.value}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground">No specifications available for this product.</p>
-              )}
+              <div className="rounded-lg border">
+                {product.specifications.map((spec, index) => (
+                  <div
+                    key={index}
+                    className={`flex justify-between p-3 ${
+                      index !== product.specifications.length - 1 ? "border-b" : ""
+                    }`}
+                  >
+                    <span className="font-medium">{spec.name}</span>
+                    <span className="text-muted-foreground">{spec.value}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </TabsContent>
           <TabsContent value="reviews" className="mt-6">
             <div className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className="text-center">
-                  <div className="text-5xl font-bold">{product.rating || 0}</div>
+                  <div className="text-5xl font-bold">{product.rating}</div>
                   <div className="mt-1 flex justify-center">
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
                         className={`h-5 w-5 ${
-                          i < Math.floor(product.rating || 0) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+                          i < Math.floor(product.rating) ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
                         }`}
                       />
                     ))}
                   </div>
-                  <div className="mt-1 text-sm text-muted-foreground">Based on {product.reviews || 0} reviews</div>
+                  <div className="mt-1 text-sm text-muted-foreground">Based on {product.reviews} reviews</div>
                 </div>
                 <div className="flex-1">
                   <div className="space-y-2">
@@ -360,48 +308,37 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <h3 className="font-medium">Rate this product</h3>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <Button key={rating} variant="outline" size="sm" onClick={() => handleAddReview(rating)}>
-                      {rating} <Star className="ml-1 h-3 w-3" />
-                    </Button>
-                  ))}
-                </div>
-              </div>
+              <Button>Write a Review</Button>
             </div>
           </TabsContent>
         </Tabs>
       </div>
 
-      {relatedProducts.length > 0 && (
-        <div className="mt-12">
-          <h2 className="text-2xl font-bold tracking-tight">Related Products</h2>
-          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-            {relatedProducts.map((relatedProduct) => (
-              <Card key={relatedProduct.id} className="overflow-hidden">
-                <Link href={`/products/${relatedProduct.id}`}>
-                  <div className="aspect-square w-full overflow-hidden">
-                    <img
-                      src={relatedProduct.images[0] || "/placeholder.svg"}
-                      alt={relatedProduct.name}
-                      className="h-full w-full object-cover transition-transform hover:scale-105"
-                    />
-                  </div>
-                </Link>
-                <CardContent className="p-4">
-                  <CardTitle className="line-clamp-1">{relatedProduct.name}</CardTitle>
-                  <CardDescription>RWF {relatedProduct.price.toLocaleString()}</CardDescription>
-                  <Button variant="outline" className="mt-4 w-full" asChild>
-                    <Link href={`/products/${relatedProduct.id}`}>View Product</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+      <div className="mt-12">
+        <h2 className="text-2xl font-bold tracking-tight">Related Products</h2>
+        <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {product.relatedProducts.map((relatedProduct) => (
+            <Card key={relatedProduct.id} className="overflow-hidden">
+              <Link href={`/products/${relatedProduct.id}`}>
+                <div className="aspect-square w-full overflow-hidden">
+                  <img
+                    src={relatedProduct.image || "/placeholder.svg"}
+                    alt={relatedProduct.name}
+                    className="h-full w-full object-cover transition-transform hover:scale-105"
+                  />
+                </div>
+              </Link>
+              <CardContent className="p-4">
+                <CardTitle className="line-clamp-1">{relatedProduct.name}</CardTitle>
+                <CardDescription>RWF {relatedProduct.price.toLocaleString()}</CardDescription>
+                <Button variant="outline" className="mt-4 w-full" asChild>
+                  <Link href={`/products/${relatedProduct.id}`}>View Product</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      )}
+      </div>
     </div>
   )
 }
