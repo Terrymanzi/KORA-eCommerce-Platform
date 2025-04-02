@@ -4,13 +4,16 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { ArrowLeft, ShoppingBag } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function SignupPage() {
   const [fullName, setFullName] = useState("")
@@ -20,17 +23,54 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [userType, setUserType] = useState("dropshipper")
   const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const { signUp } = useAuth()
+  const { toast } = useToast()
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (password !== confirmPassword) {
+      toast({
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match",
+        variant: "destructive",
+      })
+      return
+    }
+
     setIsLoading(true)
 
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const userData = {
+        full_name: fullName,
+        email,
+        phone: phone || null,
+        user_type: userType as "admin" | "wholesaler" | "dropshipper" | "customer",
+      }
+
+      const { success, error } = await signUp(email, password, userData)
+
+      if (!success) {
+        throw error || new Error("Failed to sign up")
+      }
+
+      toast({
+        title: "Account created",
+        description: "Welcome to KORA! Your account has been created successfully.",
+      })
+
+      router.push("/dashboard")
+    } catch (err) {
+      console.error("Signup error:", err)
+      toast({
+        title: "Signup failed",
+        description: "Failed to create account. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
       setIsLoading(false)
-      // Redirect to verification page would happen here
-      window.location.href = "/verification"
-    }, 1500)
+    }
   }
 
   return (

@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Slider } from "@/components/ui/slider"
+import { useCart } from "@/contexts/cart-context" // Import cart context
 
 // Mock product data
 const mockProducts = [
@@ -129,6 +130,7 @@ export default function ProductsPage() {
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [priceRange, setPriceRange] = useState([0, 150000])
   const [sortBy, setSortBy] = useState("featured")
+  const { cartItems } = useCart() // Get cart items from context
 
   // Get unique categories and suppliers for filters
   const categories = ["all", ...Array.from(new Set(mockProducts.map((p) => p.category)))]
@@ -276,45 +278,59 @@ export default function ProductsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {sortedProducts.map((product) => (
-            <Card key={product.id} className="overflow-hidden">
-              <Link href={`/products/${product.id}`}>
-                <div className="aspect-square w-full overflow-hidden">
-                  <img
-                    src={product.image || "/placeholder.svg"}
-                    alt={product.name}
-                    className="h-full w-full object-cover transition-transform hover:scale-105"
-                  />
-                </div>
-              </Link>
-              <CardContent className="p-4">
-                <div className="space-y-1">
-                  <h3 className="font-medium line-clamp-1">{product.name}</h3>
-                  <p className="text-sm text-muted-foreground">{product.category}</p>
-                  <div className="flex items-center gap-1">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <span key={i} className={i < Math.floor(product.rating) ? "text-yellow-400" : "text-gray-300"}>
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                    <span className="text-xs text-muted-foreground">({product.rating})</span>
+          {sortedProducts.map((product) => {
+            // Check if product is in cart
+            const isInCart = cartItems.some((item) => item.product_id === product.id.toString())
+
+            return (
+              <Card key={product.id} className="overflow-hidden">
+                <Link href={`/products/${product.id}`}>
+                  <div className="aspect-square w-full overflow-hidden relative">
+                    <img
+                      src={product.image || "/placeholder.svg"}
+                      alt={product.name}
+                      className="h-full w-full object-cover transition-transform hover:scale-105"
+                    />
+                    {/* Add cart indicator */}
+                    {isInCart && (
+                      <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1">
+                        <ShoppingCart className="h-4 w-4" />
+                      </div>
+                    )}
                   </div>
-                  <p className="font-bold">RWF {product.price.toLocaleString()}</p>
-                </div>
-              </CardContent>
-              <CardFooter className="p-4 pt-0 flex gap-2">
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href={`/products/${product.id}`}>View</Link>
-                </Button>
-                <Button size="icon" variant="secondary">
-                  <ShoppingCart className="h-4 w-4" />
-                  <span className="sr-only">Add to cart</span>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
+                </Link>
+                <CardContent className="p-4">
+                  <div className="space-y-1">
+                    <h3 className="font-medium line-clamp-1">{product.name}</h3>
+                    <p className="text-sm text-muted-foreground">{product.category}</p>
+                    <div className="flex items-center gap-1">
+                      <div className="flex">
+                        {[...Array(5)].map((_, i) => (
+                          <span
+                            key={i}
+                            className={i < Math.floor(product.rating) ? "text-yellow-400" : "text-gray-300"}
+                          >
+                            ★
+                          </span>
+                        ))}
+                      </div>
+                      <span className="text-xs text-muted-foreground">({product.rating})</span>
+                    </div>
+                    <p className="font-bold">RWF {product.price.toLocaleString()}</p>
+                  </div>
+                </CardContent>
+                <CardFooter className="p-4 pt-0 flex gap-2">
+                  <Button variant="outline" className="w-full" asChild>
+                    <Link href={`/products/${product.id}`}>View</Link>
+                  </Button>
+                  <Button size="icon" variant={isInCart ? "default" : "secondary"}>
+                    <ShoppingCart className="h-4 w-4" />
+                    <span className="sr-only">{isInCart ? "In cart" : "Add to cart"}</span>
+                  </Button>
+                </CardFooter>
+              </Card>
+            )
+          })}
         </div>
 
         {sortedProducts.length === 0 && (
