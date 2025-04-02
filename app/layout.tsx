@@ -1,7 +1,18 @@
 import type React from "react"
-import { ThemeProvider } from "@/components/theme-provider"
+import type { Metadata } from "next"
+import { Inter } from "next/font/google"
+import { AuthProvider } from "@/contexts/auth-context"
+import { CartProvider } from "@/contexts/cart-context"
 import { Toaster } from "@/components/ui/toaster"
 import "./globals.css"
+
+const inter = Inter({ subsets: ["latin"] })
+
+export const metadata: Metadata = {
+  title: "KORA - E-commerce Platform",
+  description: "A platform connecting wholesalers and dropshippers",
+    generator: 'v0.dev'
+}
 
 export default function RootLayout({
   children,
@@ -9,18 +20,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <title>KORA - Dropshipping Platform for Rwanda</title>
-        <meta name="description" content="Connect with local suppliers and sell products online in Rwanda" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-      </head>
-      <body>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-          <Toaster />
-        </ThemeProvider>
+    <html lang="en">
+      <body className={inter.className}>
+        <AuthProvider>
+          <CartProvider>
+            {children}
+            <Toaster />
+          </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   )
@@ -29,7 +36,3 @@ export default function RootLayout({
 
 
 import './globals.css'
-
-export const metadata = {
-      generator: 'v0.dev'
-    };
