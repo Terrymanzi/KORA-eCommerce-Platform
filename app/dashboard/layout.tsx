@@ -2,8 +2,9 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import {
   Bell,
   ChevronDown,
@@ -19,6 +20,7 @@ import {
   User,
   Users,
 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -30,6 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function DashboardLayout({
   children,
@@ -37,9 +40,29 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  // This would come from authentication context in a real app
-  const userType = "dropshipper" // or "wholesaler", "customer", "admin"
-  const userName = "John Doe"
+  const { user, loading: authLoading, signOut } = useAuth()
+  const router = useRouter()
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, authLoading, router])
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <p>Loading...</p>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null // Don't render anything if not authenticated
+  }
+
+  const userType = user.user_type
+  const userName = user.full_name
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -110,12 +133,12 @@ export default function DashboardLayout({
                       {userType === "wholesaler" && (
                         <>
                           <Link
-                            href="/dashboard/inventory"
+                            href="/dashboard/products"
                             className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
                             onClick={() => setIsMobileMenuOpen(false)}
                           >
                             <Package className="h-4 w-4" />
-                            Inventory
+                            Products
                           </Link>
                           <Link
                             href="/dashboard/orders"
@@ -134,17 +157,17 @@ export default function DashboardLayout({
                             Shipments
                           </Link>
                           <Link
-                            href="/dashboard/partners"
+                            href="/dashboard/partnerships"
                             className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
                             onClick={() => setIsMobileMenuOpen(false)}
                           >
                             <Users className="h-4 w-4" />
-                            Partners
+                            Partnerships
                           </Link>
                         </>
                       )}
                       <Link
-                        href="/dashboard/settings"
+                        href="/settings"
                         className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
                         onClick={() => setIsMobileMenuOpen(false)}
                       >
@@ -172,7 +195,15 @@ export default function DashboardLayout({
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
+                  <Avatar className="h-6 w-6">
+                    <AvatarImage src={user.avatar_url || ""} alt={userName} />
+                    <AvatarFallback>
+                      {userName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")}
+                    </AvatarFallback>
+                  </Avatar>
                   <span className="hidden md:inline-block">{userName}</span>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
@@ -180,16 +211,20 @@ export default function DashboardLayout({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
-                  <User className="mr-2 h-4 w-4" />
-                  Profile
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <User className="mr-2 h-4 w-4" />
+                    Profile
+                  </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
+                <DropdownMenuItem asChild>
+                  <Link href="/settings">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => signOut()}>
                   <LogOut className="mr-2 h-4 w-4" />
                   Logout
                 </DropdownMenuItem>
@@ -240,11 +275,11 @@ export default function DashboardLayout({
             {userType === "wholesaler" && (
               <>
                 <Link
-                  href="/dashboard/inventory"
+                  href="/dashboard/products"
                   className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
                 >
                   <Package className="h-4 w-4" />
-                  Inventory
+                  Products
                 </Link>
                 <Link
                   href="/dashboard/orders"
@@ -261,18 +296,15 @@ export default function DashboardLayout({
                   Shipments
                 </Link>
                 <Link
-                  href="/dashboard/partners"
+                  href="/dashboard/partnerships"
                   className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
                 >
                   <Users className="h-4 w-4" />
-                  Partners
+                  Partnerships
                 </Link>
               </>
             )}
-            <Link
-              href="/dashboard/settings"
-              className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
-            >
+            <Link href="/settings" className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted">
               <Settings className="h-4 w-4" />
               Settings
             </Link>
