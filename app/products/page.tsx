@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Filter, Search, ShoppingBag, ShoppingCart, ArrowLeft } from "lucide-react"
 
@@ -10,118 +10,9 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Slider } from "@/components/ui/slider"
-
-// Mock product data
-const mockProducts = [
-  {
-    id: 1,
-    name: "Smartphone X",
-    price: 120000,
-    category: "Electronics",
-    supplier: "TechHub Rwanda",
-    rating: 4.5,
-    image: "/placeholder.svg?height=200&width=200&text=Smartphone",
-  },
-  {
-    id: 2,
-    name: "Designer T-Shirt",
-    price: 15000,
-    category: "Clothing",
-    supplier: "Fashion House",
-    rating: 4.2,
-    image: "/placeholder.svg?height=200&width=200&text=T-Shirt",
-  },
-  {
-    id: 3,
-    name: "Coffee Maker",
-    price: 45000,
-    category: "Home & Kitchen",
-    supplier: "HomeGoods Rwanda",
-    rating: 4.7,
-    image: "/placeholder.svg?height=200&width=200&text=Coffee+Maker",
-  },
-  {
-    id: 4,
-    name: "Leather Backpack",
-    price: 35000,
-    category: "Accessories",
-    supplier: "LeatherCraft",
-    rating: 4.3,
-    image: "/placeholder.svg?height=200&width=200&text=Backpack",
-  },
-  {
-    id: 5,
-    name: "Wireless Earbuds",
-    price: 30000,
-    category: "Electronics",
-    supplier: "TechHub Rwanda",
-    rating: 4.1,
-    image: "/placeholder.svg?height=200&width=200&text=Earbuds",
-  },
-  {
-    id: 6,
-    name: "Yoga Mat",
-    price: 12000,
-    category: "Sports",
-    supplier: "FitLife",
-    rating: 4.6,
-    image: "/placeholder.svg?height=200&width=200&text=Yoga+Mat",
-  },
-  {
-    id: 7,
-    name: "Smart Watch",
-    price: 85000,
-    category: "Electronics",
-    supplier: "TechHub Rwanda",
-    rating: 4.4,
-    image: "/placeholder.svg?height=200&width=200&text=Smart+Watch",
-  },
-  {
-    id: 8,
-    name: "Desk Lamp",
-    price: 18000,
-    category: "Home & Kitchen",
-    supplier: "HomeGoods Rwanda",
-    rating: 4.0,
-    image: "/placeholder.svg?height=200&width=200&text=Desk+Lamp",
-  },
-  {
-    id: 9,
-    name: "Running Shoes",
-    price: 40000,
-    category: "Sports",
-    supplier: "FitLife",
-    rating: 4.8,
-    image: "/placeholder.svg?height=200&width=200&text=Running+Shoes",
-  },
-  {
-    id: 10,
-    name: "Bluetooth Speaker",
-    price: 25000,
-    category: "Electronics",
-    supplier: "TechHub Rwanda",
-    rating: 4.2,
-    image: "/placeholder.svg?height=200&width=200&text=Speaker",
-  },
-  {
-    id: 11,
-    name: "Denim Jeans",
-    price: 22000,
-    category: "Clothing",
-    supplier: "Fashion House",
-    rating: 4.3,
-    image: "/placeholder.svg?height=200&width=200&text=Jeans",
-  },
-  {
-    id: 12,
-    name: "Stainless Steel Water Bottle",
-    price: 8000,
-    category: "Accessories",
-    supplier: "HomeGoods Rwanda",
-    rating: 4.5,
-    image: "/placeholder.svg?height=200&width=200&text=Water+Bottle",
-  },
-]
+import { useToast } from "@/components/ui/use-toast"
+import { getProducts, getProductCategories } from "@/lib/supabase/products"
+import { addToCart } from "@/lib/supabase/cart"
 
 export default function ProductsPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -129,34 +20,78 @@ export default function ProductsPage() {
   const [supplierFilter, setSupplierFilter] = useState("all")
   const [priceRange, setPriceRange] = useState([0, 150000])
   const [sortBy, setSortBy] = useState("featured")
+  const [products, setProducts] = useState<any[]>([])
+  const [categories, setCategories] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const { toast } = useToast()
 
-  // Get unique categories and suppliers for filters
-  const categories = ["all", ...Array.from(new Set(mockProducts.map((p) => p.category)))]
-  const suppliers = ["all", ...Array.from(new Set(mockProducts.map((p) => p.supplier)))]
-
-  // Filter products based on search term, category, supplier, and price range
-  const filteredProducts = mockProducts.filter((product) => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesCategory = categoryFilter === "all" || product.category === categoryFilter
-    const matchesSupplier = supplierFilter === "all" || product.supplier === supplierFilter
-    const matchesPrice = product.price >= priceRange[0] && product.price <= priceRange[1]
-
-    return matchesSearch && matchesCategory && matchesSupplier && matchesPrice
-  })
-
-  // Sort products based on selected sort option
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low-high":
-        return a.price - b.price
-      case "price-high-low":
-        return b.price - a.price
-      case "rating":
-        return b.rating - a.rating
-      default: // featured
-        return 0
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const categoriesData = await getProductCategories()
+        setCategories(["all", ...categoriesData])
+      } catch (error) {
+        console.error("Error fetching categories:", error)
+      }
     }
-  })
+
+    fetchCategories()
+  }, [])
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setIsLoading(true)
+      try {
+        const { data } = await getProducts({
+          category: categoryFilter !== "all" ? categoryFilter : undefined,
+          search: searchTerm || undefined,
+          sortBy:
+            sortBy === "price-low-high"
+              ? "price"
+              : sortBy === "price-high-low"
+                ? "price"
+                : sortBy === "rating"
+                  ? "rating"
+                  : undefined,
+          sortOrder: sortBy === "price-low-high" ? "asc" : "desc",
+        })
+
+        // Filter by price range
+        const filteredData = data.filter(
+          (product: any) => product.price >= priceRange[0] && product.price <= priceRange[1],
+        )
+
+        setProducts(filteredData)
+      } catch (error) {
+        console.error("Error fetching products:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load products. Please try again.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchProducts()
+  }, [searchTerm, categoryFilter, supplierFilter, priceRange, sortBy, toast])
+
+  const handleAddToCart = async (productId: string, storeId: string) => {
+    try {
+      await addToCart(productId, storeId, 1)
+      toast({
+        title: "Added to cart",
+        description: "Product has been added to your cart.",
+      })
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add product to cart.",
+        variant: "destructive",
+      })
+    }
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -213,21 +148,6 @@ export default function ProductsPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <h3 className="text-sm font-medium">Supplier</h3>
-                    <Select value={supplierFilter} onValueChange={setSupplierFilter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select supplier" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {suppliers.map((supplier) => (
-                          <SelectItem key={supplier} value={supplier}>
-                            {supplier === "all" ? "All Suppliers" : supplier}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
                     <h3 className="text-sm font-medium">Price Range</h3>
                     <div className="pt-4">
                       <Slider
@@ -275,49 +195,71 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {sortedProducts.map((product) => (
-            <Card key={product.id} className="overflow-hidden">
-              <Link href={`/products/${product.id}`}>
-                <div className="aspect-square w-full overflow-hidden">
-                  <img
-                    src={product.image || "/placeholder.svg"}
-                    alt={product.name}
-                    className="h-full w-full object-cover transition-transform hover:scale-105"
-                  />
-                </div>
-              </Link>
-              <CardContent className="p-4">
-                <div className="space-y-1">
-                  <h3 className="font-medium line-clamp-1">{product.name}</h3>
-                  <p className="text-sm text-muted-foreground">{product.category}</p>
-                  <div className="flex items-center gap-1">
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <span key={i} className={i < Math.floor(product.rating) ? "text-yellow-400" : "text-gray-300"}>
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                    <span className="text-xs text-muted-foreground">({product.rating})</span>
-                  </div>
-                  <p className="font-bold">RWF {product.price.toLocaleString()}</p>
-                </div>
-              </CardContent>
-              <CardFooter className="p-4 pt-0 flex gap-2">
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href={`/products/${product.id}`}>View</Link>
-                </Button>
-                <Button size="icon" variant="secondary">
-                  <ShoppingCart className="h-4 w-4" />
-                  <span className="sr-only">Add to cart</span>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {products.map((product) => {
+              // Find primary image
+              const primaryImage = product.product_images?.find((img: any) => img.is_primary)
+              const imageUrl =
+                primaryImage?.url ||
+                product.product_images?.[0]?.url ||
+                "/placeholder.svg?height=200&width=200&text=No+Image"
 
-        {sortedProducts.length === 0 && (
+              return (
+                <Card key={product.id} className="overflow-hidden">
+                  <Link href={`/products/${product.id}`}>
+                    <div className="aspect-square w-full overflow-hidden">
+                      <img
+                        src={imageUrl || "/placeholder.svg"}
+                        alt={product.name}
+                        className="h-full w-full object-cover transition-transform hover:scale-105"
+                      />
+                    </div>
+                  </Link>
+                  <CardContent className="p-4">
+                    <div className="space-y-1">
+                      <h3 className="font-medium line-clamp-1">{product.name}</h3>
+                      <p className="text-sm text-muted-foreground">{product.category}</p>
+                      <div className="flex items-center gap-1">
+                        <div className="flex">
+                          {[...Array(5)].map((_, i) => (
+                            <span
+                              key={i}
+                              className={i < Math.floor(product.rating || 0) ? "text-yellow-400" : "text-gray-300"}
+                            >
+                              ★
+                            </span>
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground">({product.rating || 0})</span>
+                      </div>
+                      <p className="font-bold">RWF {product.price.toLocaleString()}</p>
+                    </div>
+                  </CardContent>
+                  <CardFooter className="p-4 pt-0 flex gap-2">
+                    <Button variant="outline" className="w-full" asChild>
+                      <Link href={`/products/${product.id}`}>View</Link>
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="secondary"
+                      onClick={() => handleAddToCart(product.id, product.supplier_id)}
+                    >
+                      <ShoppingCart className="h-4 w-4" />
+                      <span className="sr-only">Add to cart</span>
+                    </Button>
+                  </CardFooter>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+
+        {!isLoading && products.length === 0 && (
           <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
             <ShoppingBag className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="font-medium">No products found</h3>

@@ -5,6 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+<<<<<<< HEAD
 import { useAuth } from "@/contexts/auth-context"
 
 export default function LoginPage() {
@@ -13,6 +14,26 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const { signIn } = useAuth()
+=======
+import { useRouter } from "next/navigation"
+import { ArrowLeft, ShoppingBag } from "lucide-react"
+
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
+import { signIn } from "@/lib/supabase/auth"
+
+export default function LoginPage() {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [phone, setPhone] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+  const { toast } = useToast()
+>>>>>>> 6a74f7da2e64b207934e20c42703be7a59e35ddf
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -20,12 +41,29 @@ export default function LoginPage() {
     setError(null)
 
     try {
+<<<<<<< HEAD
       const { success, error } = await signIn(email)
+=======
+      await signIn(email, password)
+      router.push("/dashboard")
+      router.refresh()
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message || "Please check your credentials and try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+>>>>>>> 6a74f7da2e64b207934e20c42703be7a59e35ddf
 
       if (!success) {
         throw error || new Error("Failed to sign in")
       }
 
+<<<<<<< HEAD
       router.push("/dashboard")
     } catch (err) {
       console.error("Login error:", err)
@@ -33,6 +71,16 @@ export default function LoginPage() {
     } finally {
       setLoading(false)
     }
+=======
+    // Phone login is not implemented in this version
+    toast({
+      title: "Not implemented",
+      description: "Phone login is not available yet. Please use email login.",
+      variant: "destructive",
+    })
+
+    setIsLoading(false)
+>>>>>>> 6a74f7da2e64b207934e20c42703be7a59e35ddf
   }
 
   return (
