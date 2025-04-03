@@ -32,10 +32,10 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
     stock: 25,
     colors: ["black", "white", "blue"],
     images: [
-      "/placeholder.svg?height=500&width=500&text=Smartphone+Front",
-      "/placeholder.svg?height=500&width=500&text=Smartphone+Back",
-      "/placeholder.svg?height=500&width=500&text=Smartphone+Side",
-      "/placeholder.svg?height=500&width=500&text=Smartphone+Camera",
+      "/smartphone.webp?height=500&width=500&text=Smartphone+Front",
+      "/smartphone.webp?height=500&width=500&text=Smartphone+Back",
+      "/smartphone.webp?height=500&width=500&text=Smartphone+Side",
+      "/smartphone.webp?height=500&width=500&text=Smartphone+Camera",
     ],
     specifications: [
       { name: "Display", value: "6.5-inch AMOLED" },
@@ -58,7 +58,7 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
         id: 5,
         name: "Wireless Earbuds",
         price: 30000,
-        image: "/placeholder.svg?height=200&width=200&text=Earbuds",
+        image: "/Wireless Earbuds.jpg?height=200&width=200&text=Earbuds",
       },
       {
         id: 7,
