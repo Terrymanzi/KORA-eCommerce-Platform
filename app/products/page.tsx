@@ -21,7 +21,7 @@ const mockProducts = [
     category: "Electronics",
     supplier: "TechHub Rwanda",
     rating: 4.5,
-    image: "/placeholder.svg?height=200&width=200&text=Smartphone",
+    image: "/smartphone.webp?height=200&width=200&text=Smartphone",
   },
   {
     id: 2,
@@ -30,7 +30,7 @@ const mockProducts = [
     category: "Clothing",
     supplier: "Fashion House",
     rating: 4.2,
-    image: "/placeholder.svg?height=200&width=200&text=T-Shirt",
+    image: "/Designer T-Shirt.jpeg?height=200&width=200&text=T-Shirt",
   },
   {
     id: 3,
@@ -39,7 +39,7 @@ const mockProducts = [
     category: "Home & Kitchen",
     supplier: "HomeGoods Rwanda",
     rating: 4.7,
-    image: "/placeholder.svg?height=200&width=200&text=Coffee+Maker",
+    image: "/Coffee Maker.jpg?height=200&width=200&text=Coffee+Maker",
   },
   {
     id: 4,
@@ -48,7 +48,7 @@ const mockProducts = [
     category: "Accessories",
     supplier: "LeatherCraft",
     rating: 4.3,
-    image: "/placeholder.svg?height=200&width=200&text=Backpack",
+    image: "/Leather Backpack.webp?height=200&width=200&text=Backpack",
   },
   {
     id: 5,
@@ -57,7 +57,7 @@ const mockProducts = [
     category: "Electronics",
     supplier: "TechHub Rwanda",
     rating: 4.1,
-    image: "/placeholder.svg?height=200&width=200&text=Earbuds",
+    image: "/Wireless Earbuds.jpg?height=200&width=200&text=Earbuds",
   },
   {
     id: 6,
@@ -66,7 +66,7 @@ const mockProducts = [
     category: "Sports",
     supplier: "FitLife",
     rating: 4.6,
-    image: "/placeholder.svg?height=200&width=200&text=Yoga+Mat",
+    image: "/Yoga Mat.jpg?height=200&width=200&text=Yoga+Mat",
   },
   {
     id: 7,
